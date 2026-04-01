@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akka Cluster Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #f0f0f0;
+    }
+
+    .subtitle {
+      color: #8b949e;
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .cluster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover { border-color: #484f58; }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+    }
+
+    .badge-running {
+      background: #0d4429;
+      color: #3fb950;
+      border: 1px solid #238636;
+    }
+
+    .badge-stopped {
+      background: #3d1f1f;
+      color: #f85149;
+      border: 1px solid #6e3630;
+    }
+
+    .badge-starting {
+      background: #3d2e00;
+      color: #d29922;
+      border: 1px solid #6e5a1f;
+    }
+
+    .badge-unknown {
+      background: #272830;
+      color: #8b949e;
+      border: 1px solid #40444d;
+    }
+
+    .card-details {
+      font-size: 0.8rem;
+      color: #8b949e;
+      margin-bottom: 1rem;
+    }
+
+    .card-details span {
+      display: inline-block;
+      margin-right: 1rem;
+    }
+
+    .health-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .health-dot.green { background: #3fb950; box-shadow: 0 0 4px #3fb950; }
+    .health-dot.red { background: #f85149; }
+    .health-dot.gray { background: #484f58; }
+
+    .btn {
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #21262d;
+      color: #c9d1d9;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn:hover { background: #30363d; border-color: #484f58; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-start {
+      background: #238636;
+      border-color: #2ea043;
+      color: #fff;
+    }
+
+    .btn-start:hover { background: #2ea043; }
+
+    .btn-stop {
+      background: #6e3630;
+      border-color: #8b3e35;
+      color: #f85149;
+    }
+
+    .btn-stop:hover { background: #8b3e35; color: #fff; }
+
+    .btn-danger {
+      background: #5a1e1e;
+      border-color: #6e3630;
+      color: #f85149;
+    }
+
+    .btn-danger:hover { background: #6e3630; color: #fff; }
+
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .global-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .log-panel {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .log-panel h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: #8b949e;
+    }
+
+    .log-entries {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #8b949e;
+    }
+
+    .log-entry {
+      padding: 0.15rem 0;
+      border-bottom: 1px solid #1c2028;
+    }
+
+    .log-entry .time { color: #484f58; margin-right: 0.5rem; }
+    .log-entry.success { color: #3fb950; }
+    .log-entry.error { color: #f85149; }
+    .log-entry.info { color: #58a6ff; }
+
+    .refresh-info {
+      font-size: 0.75rem;
+      color: #484f58;
+      text-align: right;
+      margin-top: 0.5rem;
+    }
+
+    .postgres-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 1rem;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .postgres-row .label {
+      font-weight: 600;
+      min-width: 80px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Akka Cluster Admin</h1>
+  <p class="subtitle">3-node local cluster with shared Postgres persistence</p>
+
+  <div class="postgres-row">
+    <span class="label">Postgres</span>
+    <span id="pg-status" class="badge badge-unknown">...</span>
+    <div class="actions">
+      <button class="btn btn-start" onclick="apiPost('/api/db/start')">Start DB</button>
+      <button class="btn btn-stop" onclick="apiPost('/api/db/stop')">Stop DB</button>
+    </div>
+  </div>
+
+  <div class="cluster-grid" id="nodes"></div>
+
+  <div class="global-actions">
+    <button class="btn btn-start" onclick="startAll()">Start All Nodes</button>
+    <button class="btn btn-danger" onclick="apiPost('/api/stop-all')">Stop Everything</button>
+    <button class="btn" onclick="refresh()">Refresh</button>
+  </div>
+
+  <div class="log-panel">
+    <h3>Activity Log</h3>
+    <div class="log-entries" id="log"></div>
+  </div>
+  <div class="refresh-info">Auto-refreshes every 5 seconds</div>
+
+  <script>
+    const API = '';
+    let polling = null;
+
+    function log(msg, type = 'info') {
+      const el = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.innerHTML = `<span class="time">${time}</span>${msg}`;
+      el.prepend(div);
+      // Keep last 50 entries
+      while (el.children.length > 50) el.removeChild(el.lastChild);
+    }
+
+    function nodeCard(node) {
+      const running = node.status === 'RUNNING';
+      const healthy = node.healthy;
+      const badgeClass = running ? (healthy ? 'badge-running' : 'badge-starting') : 'badge-stopped';
+      const badgeText = running ? (healthy ? 'Running' : 'Starting') : 'Stopped';
+      const dotClass = running ? (healthy ? 'green' : 'gray') : 'red';
+
+      return `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Node ${node.id}</span>
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="card-details">
+            <span><span class="health-dot ${dotClass}"></span> HTTP :${node.port}</span>
+            ${node.pid ? `<span>PID ${node.pid}</span>` : ''}
+          </div>
+          <div class="actions">
+            ${running
+              ? `<button class="btn btn-stop" onclick="apiPost('/api/node/${node.id}/stop')">Stop</button>`
+              : `<button class="btn btn-start" onclick="apiPost('/api/node/${node.id}/start')">Start</button>`
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch(`${API}/api/status`);
+        const data = await res.json();
+
+        // Postgres
+        const pgEl = document.getElementById('pg-status');
+        if (data.postgres === 'RUNNING') {
+          pgEl.className = 'badge badge-running';
+          pgEl.textContent = 'Running';
+        } else {
+          pgEl.className = 'badge badge-stopped';
+          pgEl.textContent = 'Stopped';
+        }
+
+        // Nodes
+        const container = document.getElementById('nodes');
+        container.innerHTML = data.nodes.map(nodeCard).join('');
+      } catch (e) {
+        log(`Status fetch failed: ${e.message}`, 'error');
+      }
+    }
+
+    async function apiPost(path) {
+      log(`${path}...`, 'info');
+      try {
+        const res = await fetch(`${API}${path}`, { method: 'POST' });
+        const data = await res.json();
+        const output = (data.output || '').trim();
+        if (data.ok) {
+          log(`${path} — ${output || 'OK'}`, 'success');
+        } else {
+          log(`${path} — ${output || 'FAILED'}`, 'error');
+        }
+      } catch (e) {
+        log(`${path} — ${e.message}`, 'error');
+      }
+      // Refresh after a short delay to let processes settle
+      setTimeout(refresh, 1000);
+    }
+
+    async function startAll() {
+      for (const n of [1, 2, 3]) {
+        await apiPost(`/api/node/${n}/start`);
+      }
+    }
+
+    // Initial load + auto-refresh
+    refresh();
+    polling = setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
