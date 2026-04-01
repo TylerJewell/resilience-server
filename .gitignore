@@ -24,6 +24,11 @@ effective-pom.xml
 
 #local db
 db.mv.db
+db.trace.db
+
+# Cluster runtime artifacts
+scripts/.*.pid
+scripts/*.log
 
 akka-context/
 .claude/settings.local.json
